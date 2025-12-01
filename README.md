@@ -1,6 +1,6 @@
 # JSON Canvas MCP Server
 
-A Model Context Protocol (MCP) server implementation that provides tools for working with JSON Canvas files according to the [official specification](https://jsoncanvas.org/spec/1.0/). This server enables creating, modifying, and validating infinite canvas data structures.
+A Model Context Protocol (MCP) server implementation that provides tools for working with JSON Canvas files according to the [official specification](https://jsoncanvas.org/spec/1.0/). This server enables creating, modifying, and validating infinite canvas data structures, with special features for academic paper reading and research note-taking.
 
 ## Overview
 
@@ -11,6 +11,8 @@ The JSON Canvas MCP server provides a complete implementation of the JSON Canvas
 - Edge connections with styling and labels
 - Validation against the specification
 - Configurable output paths
+- **Academic mindmap generation** for paper reading and research notes
+- **#td (todo) task resolution** with connected file context support
 
 ## Components
 
@@ -19,82 +21,110 @@ The JSON Canvas MCP server provides a complete implementation of the JSON Canvas
 The server exposes the following resources:
 
 - `canvas://schema`: JSON Schema for validating canvas files
-- `canvas://examples`: Example canvas files demonstrating different features
-- `canvas://templates`: Templates for creating new canvases
+- `canvas://examples/basic`: Basic canvas example demonstrating different features
 
 ### Tools
 
+#### Canvas Creation
+
+- **create_canvas**
+  - Create a new canvas with specified nodes and edges (generic)
+  - Supports all node types: text, file, link, group
+  - Auto-generates date-prefixed filenames
+
+- **create_canvas_with_nodes**
+  - Create a new canvas with text nodes
+  - Supports auto-layout if x/y coordinates are omitted
+  - Simple and fast canvas creation
+
 #### Node Operations
 
-- **create_node**
-  - Create a new node of any supported type
-  - Input:
-    - `type` (string): Node type ("text", "file", "link", "group")
-    - `properties` (object): Node-specific properties
-      - Common: `id`, `x`, `y`, `width`, `height`, `color`
-      - Type-specific: `text`, `file`, `url`, etc.
-  - Returns: Created node object
+- **add_node**
+  - Add a node to an existing canvas file
+  - Supports all node types with type-specific properties
+
+- **get_node**
+  - Get detailed information about a specific node
+  - Returns node properties as JSON
 
 - **update_node**
-  - Update an existing node's properties
-  - Input:
-    - `id` (string): Node ID to update
-    - `properties` (object): Properties to update
-  - Returns: Updated node object
+  - Update a node's properties (text, color, position, size)
+  - Auto-sizes based on content length
+  - Size guide: <100 chars -> 300x150, 100-300 -> 400x200, 300-500 -> 450x280, >500 -> 500x350
 
-- **delete_node**
-  - Remove a node and its connected edges
-  - Input:
-    - `id` (string): Node ID to delete
-  - Returns: Success confirmation
+- **find_nodes**
+  - Search for nodes containing specific text (e.g., '#td')
+  - Returns connected nodes for context
+  - Identifies file nodes that need to be read
 
 #### Edge Operations
 
-- **create_edge**
-  - Create a new edge between nodes
-  - Input:
-    - `id` (string): Unique edge identifier
-    - `fromNode` (string): Source node ID
-    - `toNode` (string): Target node ID
-    - `fromSide` (optional string): Start side ("top", "right", "bottom", "left")
-    - `toSide` (optional string): End side
-    - `color` (optional string): Edge color
-    - `label` (optional string): Edge label
-  - Returns: Created edge object
+- **add_edge**
+  - Connect two nodes in a canvas
+  - Auto-generates edge ID with timestamp
+
+- **get_edge**
+  - Get detailed information about a specific edge
 
 - **update_edge**
-  - Update an existing edge's properties
-  - Input:
-    - `id` (string): Edge ID to update
-    - `properties` (object): Properties to update
-  - Returns: Updated edge object
+  - Update edge properties (from/to nodes, sides, ends, color, label)
+  - Validates node references before updating
 
-- **delete_edge**
-  - Remove an edge
-  - Input:
-    - `id` (string): Edge ID to delete
-  - Returns: Success confirmation
+#### Mindmap Generation
 
-#### Canvas Operations
+- **create_mindmap**
+  - Create academic mindmaps for paper reading and research notes
+  - Attaches to an existing root node
+  - Supports nested children up to 6 levels deep
+  - Semantic type coloring:
+    - `concept` (cyan): Definitions, terminology
+    - `method` (green): Algorithms, techniques
+    - `finding` (orange): Results, observations
+    - `question` (red): Research questions, problems
+    - `evidence` (purple): Citations, proofs
+  - Optional features: source references, edge labels, visual grouping
+  - Layout options: `right` (horizontal) or `down` (vertical)
+
+#### Task Resolution
+
+- **resolve_td**
+  - Complete #td (todo) nodes with context-aware content
+  - Reads connected file nodes (images, PDFs) for context
+  - Auto-sizes the resolved node based on content length
+
+#### Validation
 
 - **validate_canvas**
-  - Validate a canvas against the specification
-  - Input:
-    - `canvas` (object): Canvas data to validate
-  - Returns: Validation results with any errors
-
-- **export_canvas**
-  - Export canvas to different formats
-  - Input:
-    - `format` (string): Target format ("json", "svg", "png")
-    - `canvas` (object): Canvas data to export
-  - Returns: Exported canvas in requested format
+  - Validate a canvas against the JSON Canvas specification
+  - Returns validation results with any errors
 
 ## Usage with Claude Desktop
 
-### Docker
+### UV (Recommended)
 
 Add this to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "jsoncanvas": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/path/to/mcp-server-obsidian-jsoncanvas",
+        "run",
+        "python",
+        "mcp_server.py"
+      ],
+      "env": {
+        "OUTPUT_PATH": "/path/to/your/obsidian/vault"
+      }
+    }
+  }
+}
+```
+
+### Docker
 
 ```json
 {
@@ -117,33 +147,11 @@ Add this to your `claude_desktop_config.json`:
 }
 ```
 
-### UV
-
-```json
-{
-  "mcpServers": {
-    "jsoncanvas": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "/path/to/jsoncanvas",
-        "run",
-        "mcp-server-jsoncanvas"
-      ],
-      "env": {
-        "OUTPUT_PATH": "./output"
-      }
-    }
-  }
-}
-```
-
 ## Configuration
 
 The server can be configured using environment variables:
 
 - `OUTPUT_PATH`: Directory where canvas files will be saved (default: "./output")
-- `FORMAT`: Default output format for canvas files (default: "json")
 
 ## Building
 
@@ -163,14 +171,11 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv pip install -e .
-
-# Run tests
-pytest
 ```
 
 ## Example Usage
 
-### Creating a Canvas
+### Creating a Simple Canvas
 
 ```python
 from jsoncanvas import Canvas, TextNode, Edge
@@ -211,10 +216,41 @@ edge = Edge(
     label="Connection"
 )
 canvas.add_edge(edge)
-
-# Save canvas
-canvas.save("example.canvas")
 ```
+
+### Creating an Academic Mindmap
+
+Use the `create_mindmap` tool to generate structured research notes:
+
+```json
+{
+  "filename": "paper-notes.canvas",
+  "root_node_id": "paper-title",
+  "children": [
+    {
+      "title": "Self-Attention Complexity",
+      "text": "标准自注意力的时间和空间复杂度均为O(n²)，n为序列长度。",
+      "type": "concept",
+      "source": "Section 3.1",
+      "children": [
+        {
+          "title": "Linear Attention",
+          "text": "通过核函数分解将复杂度降至O(n)。",
+          "type": "method"
+        }
+      ]
+    }
+  ],
+  "max_depth": 4,
+  "layout": "right"
+}
+```
+
+### Resolving #td Tasks
+
+1. Use `find_nodes` to locate #td nodes and connected context
+2. If connected to file nodes, read those files first
+3. Use `resolve_td` to complete the task with appropriate content
 
 ## License
 
