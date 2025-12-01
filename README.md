@@ -98,11 +98,50 @@ The server exposes the following resources:
   - Validate a canvas against the JSON Canvas specification
   - Returns validation results with any errors
 
-## Usage with Claude Desktop
+## Usage with Claude Desktop / Gemini CLI
 
-### UV (Recommended)
+### Python venv (Recommended for Windows)
 
-Add this to your `claude_desktop_config.json`:
+Add this to your MCP client config (e.g., `claude_desktop_config.json` or Gemini CLI settings):
+
+**Windows:**
+```json
+{
+  "mcpServers": {
+    "jsoncanvas": {
+      "command": "D:/path/to/mcp-server-obsidian-jsoncanvas/.venv/Scripts/python.exe",
+      "args": [
+        "-m",
+        "mcp_server"
+      ],
+      "env": {
+        "OUTPUT_PATH": "D:/path/to/your/obsidian/vault",
+        "PYTHONUTF8": "1"
+      }
+    }
+  }
+}
+```
+
+**macOS/Linux:**
+```json
+{
+  "mcpServers": {
+    "jsoncanvas": {
+      "command": "/path/to/mcp-server-obsidian-jsoncanvas/.venv/bin/python",
+      "args": [
+        "-m",
+        "mcp_server"
+      ],
+      "env": {
+        "OUTPUT_PATH": "/path/to/your/obsidian/vault"
+      }
+    }
+  }
+}
+```
+
+### UV
 
 ```json
 {
@@ -114,7 +153,8 @@ Add this to your `claude_desktop_config.json`:
         "/path/to/mcp-server-obsidian-jsoncanvas",
         "run",
         "python",
-        "mcp_server.py"
+        "-m",
+        "mcp_server"
       ],
       "env": {
         "OUTPUT_PATH": "/path/to/your/obsidian/vault"
@@ -152,6 +192,7 @@ Add this to your `claude_desktop_config.json`:
 The server can be configured using environment variables:
 
 - `OUTPUT_PATH`: Directory where canvas files will be saved (default: "./output")
+- `PYTHONUTF8`: Set to `1` on Windows to ensure proper UTF-8 encoding
 
 ## Building
 
@@ -163,13 +204,25 @@ docker build -t mcp/jsoncanvas .
 
 ### Local Build
 
+**Windows (PowerShell):**
+```powershell
+# Install uv if not already installed
+irm https://astral.sh/uv/install.ps1 | iex
+
+# Create virtual environment and install dependencies
+uv venv
+.venv\Scripts\activate
+uv pip install -e .
+```
+
+**macOS/Linux:**
 ```bash
 # Install uv if not already installed
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Create virtual environment and install dependencies
 uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate
 uv pip install -e .
 ```
 
